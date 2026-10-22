@@ -1,0 +1,29 @@
+[gd_scene format=3 uid="uid://brsx0qnb6skpw"]
+
+[sub_resource type="GDScript" id="GDScript_kqmrj"]
+script/source = "extends CharacterBody3D
+
+@onready var camera: Camera3D = $Camera3D
+
+func _process(delta: float) -> void:
+	# This forces the character to spin automatically. No mouse or keyboard needed!
+	rotate_y(1.0 * delta)
+"
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_2m5a4"]
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_2m5a4"]
+
+[node name="Player" type="Node3D" unique_id=408331918]
+
+[node name="CharacterBody3D" type="CharacterBody3D" parent="." unique_id=1861192858]
+script = SubResource("GDScript_kqmrj")
+
+[node name="Camera3D" type="Camera3D" parent="CharacterBody3D" unique_id=1247529803]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.052480876, 0.63788295, -0.58247936)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CharacterBody3D" unique_id=742044036]
+shape = SubResource("CapsuleShape3D_2m5a4")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="CharacterBody3D" unique_id=595788739]
+mesh = SubResource("CapsuleMesh_2m5a4")

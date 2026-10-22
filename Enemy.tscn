@@ -1,0 +1,208 @@
+[gd_scene format=3 uid="uid://vrer7tir6pwj"]
+
+[sub_resource type="GDScript" id="GDScript_2m5a4"]
+script/source = "extends CharacterBody3D
+
+# --- ENEMY STATS ---
+@export var speed: float = 4.0
+@export var damage_amount: int = 12
+@export var attack_cooldown: float = 1.8
+
+# --- AI BEHAVIOUR SETTINGS ---
+@export var stalk_distance: float = 7.5
+@export var pounce_speed: float = 18.0
+
+# --- HEALTH SETTINGS ---
+@export var max_health: int = 5
+var current_health: int = 5
+
+# --- INTERNAL TRACKERS ---
+var player: CharacterBody3D = null
+var attack_timer: float = 0.0
+var is_pouncing: bool = false
+
+# Visuals & Juice Tracking
+var original_material: StandardMaterial3D = null
+var mesh_node: MeshInstance3D = null
+var base_scale: Vector3 = Vector3.ONE
+var is_dead: bool = false
+var death_velocity: Vector3 = Vector3.ZERO
+var death_rotation_speed: Vector3 = Vector3.ZERO
+
+func _ready() -> void:
+	_find_player()
+	_setup_visual_nodes()
+
+func _find_player() -> void:
+	var players = get_tree().get_nodes_in_group(\"player\")
+	if players.size() > 0:
+		player = players[0]
+
+func _setup_visual_nodes() -> void:
+	for child in get_children():
+		if child is MeshInstance3D:
+			mesh_node = child
+			base_scale = mesh_node.scale
+			if child.material_override:
+				original_material = child.material_override.duplicate()
+			elif child.mesh and child.mesh.surface_get_material(0):
+				original_material = child.mesh.surface_get_material(0).duplicate()
+			child.material_override = original_material
+			break
+			
+	if not original_material:
+		original_material = StandardMaterial3D.new()
+	if mesh_node:
+		mesh_node.material_override = original_material
+
+func _physics_process(delta: float) -> void:
+	if is_dead:
+		global_position += death_velocity * delta
+		rotation += death_rotation_speed * delta
+		death_velocity.y += get_gravity().y * delta
+		velocity = death_velocity
+		move_and_slide()
+		return
+
+	var current_velocity = velocity
+	if not is_on_floor():
+		current_velocity += get_gravity() * delta
+
+	if attack_timer > 0:
+		attack_timer -= delta
+
+	if not player or not is_instance_valid(player):
+		_find_player()
+
+	if player and is_instance_valid(player):
+		var to_player = player.global_position - global_position
+		var distance = to_player.length()
+		to_player.y = 0
+		var direction = to_player.normalized()
+
+		if to_player.length() > 0.1:
+			var target_rotation = atan2(-direction.x, -direction.z)
+			rotation.y = lerp_angle(rotation.y, target_rotation, delta * 8.0)
+
+		# State 1: Enraged Pounce (Grows massive, no color changes)
+		if is_pouncing:
+			current_velocity.x = direction.x * pounce_speed
+			current_velocity.z = direction.z * pounce_speed
+			if mesh_node:
+				mesh_node.scale = lerp(mesh_node.scale, base_scale * 1.5, delta * 15.0)
+			if distance < 1.2 or attack_timer > 0 or is_on_wall():
+				is_pouncing = false
+
+		# State 2: Ready to Attack
+		elif distance <= stalk_distance and attack_timer <= 0:
+			is_pouncing = true
+			attack_timer = attack_cooldown
+
+		# State 3: Stalking Phase (Creepy jittering crawl, no color changes)
+		elif distance <= stalk_distance and attack_timer > 0:
+			if mesh_node:
+				mesh_node.scale = lerp(mesh_node.scale, base_scale * 0.9, delta * 10.0)
+				mesh_node.position.x = randf_range(-0.08, 0.08)
+				mesh_node.position.z = randf_range(-0.08, 0.08)
+			current_velocity.x = move_toward(current_velocity.x, direction.x * (speed * 0.1), speed * delta * 15)
+			current_velocity.z = move_toward(current_velocity.z, direction.z * (speed * 0.1), speed * delta * 15)
+
+		# State 4: Default Chase approach (No color changes)
+		else:
+			if mesh_node:
+				mesh_node.scale = lerp(mesh_node.scale, base_scale, delta * 10.0)
+				mesh_node.position = Vector3.ZERO
+			current_velocity.x = direction.x * speed
+			current_velocity.z = direction.z * speed
+	else:
+		current_velocity.x = move_toward(current_velocity.x, 0, speed)
+		current_velocity.z = move_toward(current_velocity.z, 0, speed)
+
+	velocity = current_velocity
+	move_and_slide()
+
+	if is_pouncing or attack_timer <= 0:
+		for i in range(get_slide_collision_count()):
+			var collision = get_slide_collision(i)
+			var collider = collision.get_collider()
+			if collider and collider.is_in_group(\"player\"):
+				if collider.has_method(\"take_damage\"):
+					collider.take_damage(damage_amount)
+				is_pouncing = false
+				attack_timer = attack_cooldown
+				break
+
+func take_damage(amount: int) -> void:
+	if is_dead:
+		return
+	current_health -= amount
+	if current_health <= 0:
+		die()
+
+func die() -> void:
+	if is_dead:
+		return
+	is_dead = true
+
+	var current_score = get_tree().get_meta(\"score\", 0) + 1
+	get_tree().set_meta(\"score\", current_score)
+	if get_tree().has_meta(\"score_label\"):
+		var label = get_tree().get_meta(\"score_label\")
+		if is_instance_valid(label):
+			label.text = \"Score: \" + str(current_score)
+
+	var push_dir = Vector3.UP * randf_range(4.0, 7.0)
+	if player and is_instance_valid(player):
+		var horizontal_dir = (global_position - player.global_position).normalized()
+		push_dir.x = horizontal_dir.x * randf_range(12.0, 16.0)
+		push_dir.z = horizontal_dir.z * randf_range(12.0, 16.0)
+	death_velocity = push_dir
+	death_rotation_speed = Vector3(randf_range(-10, 10), randf_range(-10, 10), randf_range(-10, 10))
+
+	var hit_box = get_node_or_null(\"CollisionShape3D\")
+	if hit_box:
+		hit_box.disabled = true
+
+	var death_tween = create_tween()
+	if original_material:
+		death_tween.tween_property(original_material, \"albedo_color:a\", 0.0, 0.45)
+	death_tween.tween_callback(queue_free)
+"
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_kqmrj"]
+albedo_color = Color(0.42745098, 0.24705882, 0.16470589, 1)
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_2m5a4"]
+material = SubResource("StandardMaterial3D_kqmrj")
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_q5c78"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_gqquq"]
+albedo_color = Color(0, 0, 0.8784314, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_2m5a4"]
+material = SubResource("StandardMaterial3D_gqquq")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_tt7e2"]
+albedo_color = Color(0.42745098, 0.24705882, 0.16470589, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_2m5a4"]
+material = SubResource("StandardMaterial3D_tt7e2")
+
+[node name="Enemy" type="CharacterBody3D" unique_id=1752627252]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5579647, 0)
+script = SubResource("GDScript_2m5a4")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=805725765]
+mesh = SubResource("CapsuleMesh_2m5a4")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1469520882]
+shape = SubResource("CapsuleShape3D_q5c78")
+
+[node name="Eye2" type="MeshInstance3D" parent="." unique_id=1881314568]
+transform = Transform3D(1, 0, 0, 0, 0.5, 0, 0, 0, 0.25, -0.008056343, 0.46238935, -0.44506955)
+mesh = SubResource("SphereMesh_2m5a4")
+
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="." unique_id=1220944853]
+transform = Transform3D(0.8, 0, 0, 0, 0.8, 0, 0, 0, 0.5, 0, 0, 0.6121545)
+mesh = SubResource("BoxMesh_2m5a4")
