@@ -14,13 +14,12 @@ jobs:
 
       - name: Download Godot Engine & Templates (v4.7.2)
         run: |
-          # Pulling clean, binary assets using the exact official 4.7.2 period layout
-          curl -L -o godot.zip https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          curl -L -o godot.zip https://github.com
           unzip godot.zip
           mv Godot_v4.7.2-stable_linux.x86_64 godot
           
           mkdir -p ~/.local/share/godot/export_templates/4.7.2.stable
-          curl -L -o templates.tpz https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_export_templates.tpz
+          curl -L -o templates.tpz https://github.com
           unzip templates.tpz
           mv templates/* ~/.local/share/godot/export_templates/4.7.2.stable/
 
@@ -29,10 +28,11 @@ jobs:
 
       - name: Compile Game to Web
         run: |
-          ./godot --headless --audio-driver Dummy --display-driver Headless --export-release "Web" build/web/index.html
+          ./godot --headless --audio-driver Dummy --display-driver headless --export-release "Web" build/web/index.html
 
       - name: Upload Web Build Archive
         uses: actions/upload-artifact@v4
         with:
           name: game-web-build
           path: build/web/
+
