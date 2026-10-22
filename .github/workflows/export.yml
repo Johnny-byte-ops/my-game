@@ -14,12 +14,13 @@ jobs:
 
       - name: Download Godot Engine & Templates (v4.7.2)
         run: |
-          wget https://github.com
+          # Pull from official distribution mirrors
+          wget https://tuxfamily.org
           unzip Godot_v4.7.2-stable_linux_x86_64.zip
           mv Godot_v4.7.2-stable_linux.x86_64 godot
           
           mkdir -p ~/.local/share/godot/export_templates/4.7.2.stable
-          wget https://github.com
+          wget https://tuxfamily.org
           unzip Godot_v4.7.2-stable_export_templates.tpz
           mv templates/* ~/.local/share/godot/export_templates/4.7.2.stable/
 
@@ -35,3 +36,4 @@ jobs:
         with:
           name: game-web-build
           path: build/web/
+
