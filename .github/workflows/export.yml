@@ -17,3 +17,4 @@ jobs:
         relative_project_path: ./
         presets_to_export: "Web"
         archive_output: true
+        export_output_directory: "build/web"
