@@ -3,25 +3,25 @@ on: [push]
 
 jobs:
   build-game:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Setup Linux Dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y wget unzip
+          sudo apt-get update && sudo apt-get install -y curl unzip
 
       - name: Download Godot Engine & Templates (v4.7.2)
         run: |
-          # Fetch directly from the official GitHub release binary distribution assets
-          wget https://github.com
-          unzip Godot_v4.7.2-stable_linux.x86_64.zip
-          mv Godot_v4.7.2-stable_linux.x86_64 godot
+          # Use curl with location follows to cleanly grab the files
+          curl -L -o godot.zip https://tuxfamily.org
+          unzip godot.zip
+          mv Godot_v4.7.2-stable_linux_x86_64 godot
           
           mkdir -p ~/.local/share/godot/export_templates/4.7.2.stable
-          wget https://github.com
-          unzip Godot_v4.7.2-stable_export_templates.tpz
+          curl -L -o templates.tpz https://tuxfamily.org
+          unzip templates.tpz
           mv templates/* ~/.local/share/godot/export_templates/4.7.2.stable/
 
       - name: Create Web Build Folder
