@@ -14,13 +14,13 @@ jobs:
 
       - name: Download Godot Engine & Templates (v4.7.2)
         run: |
-          # Use curl with location follows to cleanly grab the files
-          curl -L -o godot.zip https://tuxfamily.org
+          # Pulling clean, binary assets directly from the official GitHub Release Mirrors
+          curl -L -o godot.zip https://github.com
           unzip godot.zip
-          mv Godot_v4.7.2-stable_linux_x86_64 godot
+          mv Godot_v4.7.2-stable_linux.x86_64 godot
           
           mkdir -p ~/.local/share/godot/export_templates/4.7.2.stable
-          curl -L -o templates.tpz https://tuxfamily.org
+          curl -L -o templates.tpz https://github.com
           unzip templates.tpz
           mv templates/* ~/.local/share/godot/export_templates/4.7.2.stable/
 
