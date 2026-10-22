@@ -28,10 +28,11 @@ jobs:
 
       - name: Compile Game to Web
         run: |
-          ./godot --headless --export-release "Web" build/web/index.html
+          ./godot --headless --audio-driver Dummy --display-driver Headless --export-release "Web" build/web/index.html
 
       - name: Upload Web Build Archive
         uses: actions/upload-artifact@v4
         with:
           name: game-web-build
           path: build/web/
+
